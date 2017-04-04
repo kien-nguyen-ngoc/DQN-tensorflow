@@ -1,5 +1,5 @@
 class AgentConfig(object):
-  scale = 10000
+  scale = 1000
   display = False
 
   max_step = 5000 * scale
@@ -32,28 +32,60 @@ class AgentConfig(object):
   _test_step = 5 * scale
   _save_step = _test_step * 10
 
+
 class EnvironmentConfig(object):
   env_name = 'Breakout-v0'
 
-  screen_width  = 84
+  screen_width = 84
   screen_height = 84
   max_reward = 1.
   min_reward = -1.
 
+
+class AleEnvironmentConfig(object):
+  env_name = 'MsPacman-v0'
+
+  screen_width = 210
+  screen_height = 160
+  max_reward = 1.
+  min_reward = -1.
+
+
 class DQNConfig(AgentConfig, EnvironmentConfig):
   model = ''
   pass
+
+
+class DQNAleConfig(AgentConfig, AleEnvironmentConfig):
+  model = ''
+  pass
+
 
 class M1(DQNConfig):
   backend = 'tf'
   env_type = 'detail'
   action_repeat = 1
 
+
+class Ale(DQNAleConfig):
+  backend = 'tf'
+  env_type = 'ale'
+  action_repeat = 4
+  rom_path = 'roms/ms_pacman.bin'
+  display_screen = True
+  sound = True
+  volume = 10
+  frame_skip = 3
+  random_seed = 123
+
+
 def get_config(FLAGS):
   if FLAGS.model == 'm1':
     config = M1
   elif FLAGS.model == 'm2':
     config = M2
+  else:
+    config = Ale
 
   for k, v in FLAGS.__dict__['__flags'].items():
     if k == 'gpu':

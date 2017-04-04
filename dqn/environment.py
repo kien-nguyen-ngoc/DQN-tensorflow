@@ -1,14 +1,18 @@
 import gym
 import random
 import numpy as np
+
+from ale_python_interface import ALEInterface
+
 from .utils import rgb2gray, imresize
+
 
 class Environment(object):
   def __init__(self, config):
     self.env = gym.make(config.env_name)
 
     screen_width, screen_height, self.action_repeat, self.random_start = \
-        config.screen_width, config.screen_height, config.action_repeat, config.random_start
+      config.screen_width, config.screen_height, config.action_repeat, config.random_start
 
     self.display = config.display
     self.dims = (screen_width, screen_height)
@@ -38,10 +42,10 @@ class Environment(object):
     action = self.env.action_space.sample()
     self._step(action)
 
-  @ property
+  @property
   def screen(self):
-    return imresize(rgb2gray(self._screen)/255., self.dims)
-    #return cv2.resize(cv2.cvtColor(self._screen, cv2.COLOR_BGR2YCR_CB)/255., self.dims)[:,:,0]
+    return imresize(rgb2gray(self._screen) / 255., self.dims)
+    # return cv2.resize(cv2.cvtColor(self._screen, cv2.COLOR_BGR2YCR_CB)/255., self.dims)[:,:,0]
 
   @property
   def action_size(self):
@@ -61,6 +65,7 @@ class Environment(object):
 
   def after_act(self, action):
     self.render()
+
 
 class GymEnvironment(Environment):
   def __init__(self, config):
@@ -86,6 +91,7 @@ class GymEnvironment(Environment):
     self.after_act(action)
     return self.state
 
+
 class SimpleGymEnvironment(Environment):
   def __init__(self, config):
     super(SimpleGymEnvironment, self).__init__(config)
@@ -94,4 +100,88 @@ class SimpleGymEnvironment(Environment):
     self._step(action)
 
     self.after_act(action)
+    return self.state
+
+
+class AleEnvironment(Environment):
+  def __init__(self, config):
+    ale = ALEInterface()
+    ale.setBool('display_screen', config.display_screen)
+    ale.setBool('sound', config.sound)
+    ale.setInt('volume', config.volume)
+    ale.setInt('frame_skip', config.frame_skip)
+    ale.setInt('random_seed', config.random_seed)
+
+    ale.loadROM(config.rom_path)
+
+    self.env = ale
+
+    self.action_repeat, self.random_start = config.action_repeat, config.random_start
+
+    self.display = config.display
+    self.dims = self.env.getScreenDims()
+
+    self._screen = None
+    self.reward = 0
+    self.terminal = True
+
+  def new_game(self, from_random_game=False):
+    if self.lives == 0:
+      self.env.reset_game()
+      # print ('######################### GAME OVER #########################', self.env.game_over())
+      self._screen = self.env.getScreenRGB()
+    self._step(0)
+    if from_random_game:
+      for _ in xrange(random.randint(0, self.random_start - 1)):
+        self._step(0)
+    return self.screen, 0, 0, self.terminal
+
+  def new_random_game(self):
+    self.new_game(True)
+    return self.screen, 0, 0, self.terminal
+
+  def _step(self, action):
+    self._screen = self.env.getScreenRGB()
+    self.reward = self.env.act(action)
+    self.terminal = self.env.game_over()
+    return self._screen, self.reward, self.terminal
+
+  def _random_step(self):
+    action = random.randint(0, self.action_size)
+    self._step(action)
+
+  @property
+  def screen(self):
+    return imresize(rgb2gray(self._screen) / 255., self.dims)
+    # return cv2.resize(cv2.cvtColor(self._screen, cv2.COLOR_BGR2YCR_CB)/255., self.dims)[:,:,0]
+
+  @property
+  def action_size(self):
+    return self.env.getLegalActionSet().size
+
+  @property
+  def lives(self):
+    return self.env.lives()
+
+  @property
+  def state(self):
+    return self.screen, self.reward, self.terminal
+
+  def act(self, action, is_training=True):
+    cumulated_reward = 0
+    start_lives = self.lives
+
+    for _ in xrange(self.action_repeat):
+      self._step(action)
+      cumulated_reward = cumulated_reward + self.reward
+
+      if is_training and start_lives > self.lives:
+        cumulated_reward -= 1
+        self.terminal = True
+
+      if self.terminal:
+        break
+
+    self.reward = cumulated_reward
+
     return self.state
