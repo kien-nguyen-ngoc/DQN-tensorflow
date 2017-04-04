@@ -17,6 +17,7 @@ This implementation contains:
 
 - Python 2.7 or Python 3.3+
 - [gym](https://github.com/openai/gym)
+- [ale_python_interface 0.5.1](http://www.arcadelearningenvironment.org)
 - [tqdm](https://github.com/tqdm/tqdm)
 - [SciPy](http://www.scipy.org/install.html) or [OpenCV2](http://opencv.org/)
 - [TensorFlow 0.12.0](https://github.com/tensorflow/tensorflow/tree/r0.12)
